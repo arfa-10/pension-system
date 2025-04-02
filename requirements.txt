@@ -1,0 +1,6 @@
+redis
+pyodbc
+prettytable
+cryptography
+matplotlib
+pandas
