@@ -1,6 +1,22 @@
+# ===============================
+# 📦 Requirements for this script
+# ===============================
+# Install via: pip install -r requirements.txt
+#
+# redis
+# pyodbc
+# cryptography
+# prettytable
+# matplotlib
+# pandas
+#
+# Make sure you also have:
+# - SQL Server driver installed (ODBC Driver 17+)
+# - Redis Cloud URL and credentials (set via .env or directly in code)
+# ===============================
 redis
 pyodbc
-prettytable
 cryptography
+prettytable
 matplotlib
 pandas

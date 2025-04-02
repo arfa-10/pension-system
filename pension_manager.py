@@ -20,7 +20,7 @@ class PensionSystemManager:
         self.secret_key = os.environ.get("REDIS_SECRET_KEY") or Fernet.generate_key()
         self.fernet = Fernet(self.secret_key)
         print(f"🔑 Redis encryption key loaded.")
-        self.load_redis_data()
+        #self.load_redis_data()
 
 
     def initialize_databases(self):
@@ -49,12 +49,13 @@ class PensionSystemManager:
         # Redis Connection
         try:
             self.redis_client = redis.Redis(
-                host='localhost',
-                port=6380,
-                db=0,
+                host='redis-19057.c278.us-east-1-4.ec2.redns.redis-cloud.com',
+                port=19057,
+                password='nxgpjlbCPGNHPqYMDAKuhdK4q5yJyXiJ',
                 decode_responses=True,
-                socket_connect_timeout=5
+                ssl=False  # ✅ Required for Redis Cloud
             )
+
             self.redis_client.ping()
             print("✅ Redis connection successful")
         except Exception as e:
@@ -66,6 +67,13 @@ class PensionSystemManager:
             print(f"⚠️ No Redis JSON file found at {self.redis_json_path}")
             return
         try:
+            # 🧹 Clear old data first (optional, but prevents re-uploading same records)
+        #     print("♻️ Deleting existing Redis pensioner and bank keys for demo purposes..")
+        #     for key in self.redis_client.scan_iter("pensioner:*"):
+        #         self.redis_client.delete(key)
+        #     for key in self.redis_client.scan_iter("bank:*"):
+        #         self.redis_client.delete(key)
+        # #try:
             with open(self.redis_json_path) as f:
                 data = json.load(f)
     
@@ -77,7 +85,9 @@ class PensionSystemManager:
                     if isinstance(item, dict) and 'key' in item and 'data' in item:
                         key = item['key']
                         data_item = item['data']
-    
+                        if self.redis_client.exists(key):
+                            continue  # ✅ Skip if key already in Redis
+
                         # Only encrypt if relevant fields are present
                         if key.startswith("pensioner:") and not key.startswith("pensioner:meta"):
                             if all(k in data_item for k in ['full_name', 'aadhaar_number', 'contact']):
@@ -94,13 +104,14 @@ class PensionSystemManager:
                         pensioner_id = data_item.get('sql_reference', {}).get('id')
                         if pensioner_id is not None:
                             meta_key = f"pensioner:meta:{str(pensioner_id).zfill(12)}"
-                            self.set_pensioner_meta(pensioner_id, {
-                                "device": random.choice(["iOS", "Android", "Windows"]),
-                                "onboarding_complete": random.choice([True, False]),
-                                "preferred_language": random.choice(["en", "tr", "de"]),
-                                "login_count": random.randint(1, 50),
-                                "last_login": datetime.now().isoformat()
-                            })
+                            if not self.redis_client.exists(meta_key):
+                                self.set_pensioner_meta(pensioner_id, {
+                                    "device": random.choice(["iOS", "Android", "Windows"]),
+                                    "onboarding_complete": random.choice([True, False]),
+                                    "preferred_language": random.choice(["en", "tr", "de"]),
+                                    "login_count": random.randint(1, 50),
+                                    "last_login": datetime.now().isoformat()
+                                })
     
             print(f"✅ Loaded Redis data from {self.redis_json_path}")
         except Exception as e:
@@ -474,7 +485,7 @@ class PensionSystemManager:
             print("8. Visualize Pensioner Metadata")
             
                         
-            choice = input("Select option (1-7): ")
+            choice = input("Select option (1-8): ")
             
             if choice == '1':
                 self.sql_crud_menu()
@@ -750,7 +761,7 @@ class PensionSystemManager:
 # Main execution
 if __name__ == "__main__":
     # Check for command line argument for JSON path
-    json_path = 'redis_data.json'
+    json_path = 'redis_data_synced.json'
     if len(sys.argv) > 1:
         json_path = sys.argv[1]
         print(f"Using JSON file from command line: {json_path}")
